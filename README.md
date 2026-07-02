@@ -2,12 +2,29 @@
 
 网易云音乐在线播放器。
 
-## 启动
+## 环境准备
 
 1. 安装 [Node.js](https://nodejs.org/)（LTS 版本）
-2. 双击 `启动.bat`
+2. 安装 NeteaseCloudMusicApi：
 
-首次启动会自动打开浏览器 → 扫码登录网易云 → 加载歌单 → 播放。
+```bash
+mkdir NeteaseCloudMusicApi
+cd NeteaseCloudMusicApi
+npm init -y
+npm install NeteaseCloudMusicApi
+```
+
+3. 在该目录下创建 `app.js`：
+
+```js
+require('./node_modules/NeteaseCloudMusicApi/app.js');
+```
+
+4. 修改 `启动.bat` 中的 `API_DIR` 为你的 NeteaseCloudMusicApi 目录路径
+
+## 启动
+
+双击 `启动.bat`，首次启动会自动打开浏览器 → 扫码登录网易云 → 加载歌单 → 播放。
 
 ## 技术栈
 
