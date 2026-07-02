@@ -6,18 +6,22 @@ echo ==============================================
 echo    MelodyBox
 echo ==============================================
 
+:: === 配置：修改这个路径指向你的 NeteaseCloudMusicApi 目录 ===
+set "API_DIR=C:\Users\19558\NeteaseCloudMusicApi"
+:: =================================================================
+
 :: Kill old processes
 taskkill /f /im node.exe >nul 2>&1
 timeout /t 1 /nobreak >nul
 
 :: Start Netease API
 echo Starting API (localhost:3000) ...
-start "API" /MIN cmd /c "C:\Users\19558\NeteaseCloudMusicApi\start.bat"
+start "API" /MIN cmd /c "%API_DIR%\start.bat"
 timeout /t 5 /nobreak >nul
 
 :: Start frontend
 echo Starting frontend (localhost:5000) ...
-start "Frontend" /MIN cmd /c "C:\Users\19558\Desktop\音乐播放器\start-server.bat"
+start "Frontend" /MIN cmd /c "%~dp0start-server.bat"
 timeout /t 2 /nobreak >nul
 
 :: Open browser
