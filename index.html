@@ -1,0 +1,242 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>MelodyBox</title>
+<link rel="stylesheet" href="style.css">
+</head>
+<body>
+
+<!-- 背景系统 -->
+<div id="bg-color"></div>
+<div id="bg-vignette"></div>
+
+<!-- Toast -->
+<div id="toast"></div>
+
+<!-- 网易云登录模态框 -->
+<div class="login-modal-overlay" id="loginModalOverlay">
+  <div class="login-modal">
+    <button class="login-close-btn" onclick="closeLoginModal()">&times;</button>
+    <div class="login-title">网易云音乐登录</div>
+    <div class="login-subtitle">打开网易云音乐 APP 扫码</div>
+    <div class="qr-container" id="qrContainer">
+      <img id="qrImg" src="" alt="二维码加载中...">
+      <div class="qr-mask" id="qrMask" style="display:none" onclick="refreshQr()">
+        <span>二维码已失效<br>点击刷新</span>
+      </div>
+    </div>
+    <div class="login-status" id="loginStatus">等待扫码...</div>
+  </div>
+</div>
+
+<!-- ============================================
+     侧边栏 (曲库)
+     ============================================ -->
+<div class="sidebar-overlay" id="sidebarOverlay">
+  <div class="backdrop" id="sidebarBackdrop"></div>
+  <nav class="sidebar">
+    <div class="sidebar-header">
+      <span class="brand"><span class="dot"></span>资料库</span>
+    </div>
+
+    <div class="tab-bar">
+      <button class="tab-btn active" data-tab="songs" onclick="switchTab('songs')">歌曲</button>
+      <button class="tab-btn" data-tab="albums" onclick="switchTab('albums')">专辑</button>
+    </div>
+
+    <div id="songView" class="tab-view">
+      <div class="playlist-select-wrap" id="playlistSelectWrap" style="display:none">
+        <select id="playlistSelect" onchange="selectPlaylist(this.value)"></select>
+      </div>
+      <div class="search-wrap">
+        <input type="text" id="searchInput" placeholder="搜索歌曲、歌手、专辑..." autocomplete="off">
+      </div>
+      <div class="lib-scroll" id="songScroll">
+        <div class="lib-empty on" id="libEmpty">
+          <div class="empty-icon">🎵</div>
+          <div class="empty-title">未发现音乐</div>
+          <div class="empty-hint">点击下方「登录网易云」开始使用<br>登录后可加载你的歌单</div>
+        </div>
+        <div id="libList"></div>
+      </div>
+    </div>
+
+    <div id="albumView" class="tab-view" style="display:none">
+      <div class="lib-scroll" id="albumScroll">
+        <div class="album-grid" id="albumGridView"></div>
+        <div class="album-detail" id="albumDetailView" style="display:none"></div>
+        <div class="lib-empty" id="albumEmpty" style="display:none">
+          <div class="empty-icon">💿</div>
+          <div class="empty-title">未发现专辑</div>
+          <div class="empty-hint">音乐文件中缺少专辑标签信息</div>
+        </div>
+      </div>
+    </div>
+
+    <div class="sidebar-footer">
+      <span><span class="lib-count" id="libCount">0</span> 首</span>
+      <button class="refresh-btn" id="neteaseLoginBtn" onclick="openLoginModal()">🔐 登录网易云</button>
+      <button class="refresh-btn" id="refreshBtn" onclick="refreshLib()" title="刷新歌单">
+        <span class="spin"></span>
+        <span class="rlabel">🔄 刷新歌单</span>
+      </button>
+    </div>
+  </nav>
+</div>
+
+<!-- ============================================
+     主界面
+     ============================================ -->
+<div id="app">
+
+  <!-- 空闲状态 -->
+  <div class="idle-state" id="idleState">
+    <div class="idle-icon">🎧</div>
+    <div class="idle-text">MelodyBox</div>
+    <div class="idle-hint">本地音乐播放器</div>
+    <button class="idle-btn" id="openLibBtn">浏览曲库</button>
+  </div>
+
+  <!-- 播放界面 (初始隐藏) -->
+  <div id="playerUI" style="display:none" class="main-layout">
+
+    <!-- ========= 左面板 ========= -->
+    <div class="left-panel">
+
+      <!-- 封面 -->
+      <div class="lp-cover" id="lpCover">
+        <div class="no-cover">🎵</div>
+      </div>
+
+      <!-- 歌曲信息 -->
+      <div class="lp-info">
+        <div class="lp-title" id="lpTitle">—</div>
+        <div class="lp-artist" id="lpArtist">—</div>
+      </div>
+
+      <!-- 音频频谱 -->
+      <div class="lp-spectrum">
+        <canvas id="lpSpectrumCanvas" width="420" height="42"></canvas>
+      </div>
+
+      <!-- 进度条 -->
+      <div class="lp-progress">
+        <div class="lp-progress-bar" id="lpProgressBar">
+          <div class="lp-progress-track">
+            <div class="lp-progress-fill" id="lpProgressFill"></div>
+          </div>
+          <div class="lp-progress-thumb" id="lpProgressThumb"></div>
+        </div>
+        <div class="lp-time-row">
+          <span id="lpCurTime">00:00</span>
+          <span id="lpDurTime">00:00</span>
+        </div>
+      </div>
+
+      <!-- 控制按钮组 -->
+      <div class="lp-controls">
+        <!-- 循环 -->
+        <button class="lp-ctrl-btn dim" id="lpRepeatBtn" onclick="repeatToggle()" title="循环播放">
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
+            <polyline points="17 1 21 5 17 9"/><path d="M3 11V9a4 4 0 0 1 4-4h14"/>
+            <polyline points="7 23 3 19 7 15"/><path d="M21 13v2a4 4 0 0 1-4 4H3"/>
+          </svg>
+        </button>
+
+        <!-- 音量 -->
+        <div class="vol-popover-wrap">
+          <button class="lp-ctrl-btn" id="lpVolBtn" onclick="toggleVolPopover()" oncontextmenu="event.preventDefault();toggleMute()" title="音量 (右键静音)">
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+              <polygon points="11 5 6 9 2 9 2 15 6 15 11 19 11 5"/>
+              <path class="vol-wave-1" d="M19.07 4.93a10 10 0 0 1 0 14.14"/>
+              <path class="vol-wave-2" d="M15.54 8.46a5 5 0 0 1 0 7.07"/>
+              <line class="vol-mute-x1" x1="23" y1="9" x2="17" y2="15" style="display:none"/>
+              <line class="vol-mute-x2" x1="17" y1="9" x2="23" y2="15" style="display:none"/>
+            </svg>
+          </button>
+          <div class="vol-popover" id="lpVolPopover">
+            <input type="range" id="lpVolSlider" min="0" max="100" value="60" oninput="setVol(this.value)">
+          </div>
+        </div>
+
+        <!-- 上一曲 -->
+        <button class="lp-ctrl-btn" onclick="prevSong()" title="上一首">
+          <svg width="22" height="22" viewBox="0 0 24 24" fill="currentColor">
+            <polygon points="8,7 8,17 4,12"/><rect x="10" y="7" width="3" height="10" rx="0.5"/><rect x="15" y="7" width="3" height="10" rx="0.5"/>
+          </svg>
+        </button>
+
+        <!-- 播放 / 暂停 -->
+        <button class="lp-play-btn" id="lpPlayBtn" onclick="togglePlay()" title="播放">
+          <svg id="lpPlayIcon" width="26" height="26" viewBox="0 0 24 24" fill="currentColor">
+            <polygon points="8,5 19,12 8,19"/>
+          </svg>
+        </button>
+
+        <!-- 下一曲 -->
+        <button class="lp-ctrl-btn" onclick="nextSong()" title="下一首">
+          <svg width="22" height="22" viewBox="0 0 24 24" fill="currentColor">
+            <polygon points="16,7 16,17 20,12"/><rect x="6" y="7" width="3" height="10" rx="0.5"/><rect x="11" y="7" width="3" height="10" rx="0.5"/>
+          </svg>
+        </button>
+
+        <!-- 随机播放 -->
+        <button class="lp-ctrl-btn dim" id="lpShuffleBtn" onclick="shuffleToggle()" title="随机播放">
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
+            <polyline points="16 3 21 3 21 8"/><line x1="4" y1="20" x2="21" y2="3"/>
+            <polyline points="21 16 21 21 16 21"/><line x1="15" y1="15" x2="21" y2="21"/>
+            <line x1="4" y1="4" x2="9" y2="9"/>
+          </svg>
+        </button>
+
+        <!-- 列表 -->
+        <button class="lp-ctrl-btn" id="playerLibBtn" title="曲库">
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <line x1="8" y1="6" x2="21" y2="6"/><line x1="8" y1="12" x2="21" y2="12"/>
+            <line x1="8" y1="18" x2="21" y2="18"/>
+            <line x1="3" y1="6" x2="3.01" y2="6"/><line x1="3" y1="12" x2="3.01" y2="12"/>
+            <line x1="3" y1="18" x2="3.01" y2="18"/>
+          </svg>
+        </button>
+      </div>
+    </div>
+
+    <!-- ========= 右面板 (歌词) ========= -->
+    <div class="right-panel">
+      <div class="rp-header">
+        <button class="rp-menu-btn" id="rpMenuBtn" onclick="toggleRpMenu()" title="更多">···</button>
+        <div class="rp-menu-dropdown" id="rpMenuDropdown">
+          <button class="rp-menu-item" onclick="cycleSpeed()">
+            <span>播放速度</span>
+            <span id="rpSpeedLabel" style="font-variant-numeric:tabular-nums; color:rgba(255,255,255,0.5)">1×</span>
+          </button>
+          <div class="rp-menu-divider"></div>
+          <div class="rp-menu-offset-row">
+            <button onclick="adjustLyricOffset(-0.5)" title="提前 0.5 秒">−0.5</button>
+            <span id="rpOffsetLabel">0.0s</span>
+            <button onclick="adjustLyricOffset(+0.5)" title="延后 0.5 秒">+0.5</button>
+            <button onclick="adjustLyricOffset(0)" title="重置" style="margin-left:4px">↺</button>
+          </div>
+        </div>
+      </div>
+
+      <div class="rp-lyrics-container" id="rpLyricsContainer">
+        <div class="rp-lyrics-scroll" id="rpLyricsScroll"></div>
+        <div class="rp-lyrics-empty" id="rpLyricsEmpty">
+          <span class="empty-icon">🎤</span>
+          <span>暂无歌词</span>
+        </div>
+      </div>
+    </div>
+
+  </div><!-- /.main-layout -->
+
+</div><!-- /#app -->
+
+<audio id="audio" preload="auto"></audio>
+
+<script src="app.js"></script>
+</body>
+</html>
